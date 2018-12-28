@@ -12,9 +12,9 @@ open Ast
 (* lexical definitions *)
 
 let ws = spaces
-let str s = pstring s >>. ws
+let skip s = pstring s >>. ws
 
-let identifierString = many1Satisfy isLower .>> ws // [a-z]+
+let identifierString = many1Satisfy isAsciiLower // [a-z]+
 let keywords = [ "Cond"; "True"; "False" ]
 let keywordSet = new HashSet<string>(keywords)
 let isKeyword str = keywordSet.Contains(str)
@@ -33,7 +33,7 @@ let numberFormat =     NumberLiteralOptions.AllowMinusSign
                    ||| NumberLiteralOptions.AllowFraction
                    ||| NumberLiteralOptions.AllowExponent
 
-let numberLit : Parser<NumberLiteral, unit> = numberLiteral numberFormat "number" .>> ws
+let numberLit : Parser<NumberLiteral, unit> = numberLiteral numberFormat "number"
 
 (* Parsers for Grammar productions *)
 
@@ -59,29 +59,43 @@ let kstring : Parser<KExpr, unit> =
             (manyChars (normalChar <|> escapedChar))
     |>> KString
 
-let declaration = str ":" >>. identifier |>> KDecl
+let declaration = pstring ":" >>. identifier |>> KDecl
+
+let ident = identifier |>> KIdent
 
 // for recursive grammar productions we need a dummy
 // expr is a parser that forward all calls to a reference
 // call to break the cyclic dependency.
 let expr, exprRef = createParserForwardedToRef()
+let condExpr, condExprRef = createParserForwardedToRef()
+
+let condAlternative =
+    between (skip "?(") (skip ")")
+            (expr .>> ws)
 
 let cond =
-    // "Cond KExpr ?(alt1) ?(alt2) ?(alt3)...
-    KAbort
+    pipe2 (skip "Cond" >>. condExpr .>> ws) (many1 (condAlternative .>> ws))
+        (fun con alt -> KCond(con, alt))
+do condExprRef:= choice [kbool]
 
 let apply =
-    KAbort
+    pipe2 identifier
+        (between (skip "(") (skip ")")
+            (many ((expr .>> ws) .>> skip ",")))
+        (fun funcIdent args -> KApply(funcIdent, args))
 
 let prim =
-    KAbort
+    pipe3 expr (choice [pstring "+"; pstring "-"; pstring "*"; pstring "/"]) expr 
+        (fun lexpr op rexpr -> KPrim(op, lexpr, rexpr))
 
-let funcArgs = str ":" >>. identifier
+let funcArgs = skip ":" >>. identifier
 
 let anonFunction =
-    between (str "[") (str "]")
-            (pipe2 (many funcArgs) (str "|" >>. expr)
-                (fun args expr -> KAnonFun(args, expr)))
+    between (skip "[") (skip "]")
+            (pipe2 (many funcArgs) (skip "|" >>. expr)
+                (fun args body -> KAnonFun(args, body)))
 
-// replace dummy parser reference in exprRef
-do exprRef:= choice [number; kbool; kstring; declaration; (*...*) anonFunction]
+// replace dummy parser references
+do condExprRef:= choice [kbool; ident; apply; anonFunction]
+do exprRef:= choice [number; kbool; kstring; declaration; 
+                    ident; cond; apply; prim; anonFunction]

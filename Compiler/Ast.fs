@@ -7,10 +7,11 @@ type KExpr =
     | KBool of bool
     | KString of string
     | KDecl of string
+    | KIdent of string
     | KPrim of string * KExpr * KExpr     // Primitive like + - * /
     | KAnonFun of (string list) * KExpr
-    | KCond of KExpr list
-    | KApply of KExpr * KExpr
+    | KCond of KExpr * KExpr list
+    | KApply of string * KExpr list
     | KAbort // should be only used in tests
     with
         member private t.StructuredFormatDisplay =
@@ -19,11 +20,12 @@ type KExpr =
             | KFloat  f -> box f
             | KBool   b -> box b
             | KString s -> box ("\"" + s + "\"")
-            | KDecl   s -> box ("@" + s)
+            | KDecl   s -> box (":" + s)
+            | KIdent  s -> box ("@" + s)
             | KPrim (s, e1, e2) -> box s
             | KAnonFun (s, e) -> box "function"
-            | KCond   l -> box l
-            | KApply (e1, e2) -> box "apply"
+            | KCond (c, a) -> box "cond"
+            | KApply (s, e) -> box ("function:" + s)
             | KAbort    -> box "abort"
 
 type Command =
