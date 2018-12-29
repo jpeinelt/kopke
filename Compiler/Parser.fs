@@ -45,9 +45,9 @@ let number =
 
 let kbool : Parser<KExpr, unit> =     (stringReturn "True"  (KBool true))
                                   <|> (stringReturn "False" (KBool false))
-    
 
-let kstring : Parser<KExpr, unit> = 
+
+let kstring : Parser<KExpr, unit> =
     let normalChar = satisfy (fun c -> c <> '\\' && c <> '"')
     let unescape c = match c with
                      | 'n' -> '\n'
@@ -68,34 +68,50 @@ let ident = identifier |>> KIdent
 // call to break the cyclic dependency.
 let expr, exprRef = createParserForwardedToRef()
 let condExpr, condExprRef = createParserForwardedToRef()
+let applyExpr, applyRef = createParserForwardedToRef()
 
 let condAlternative =
     between (skip "?(") (skip ")")
             (expr .>> ws)
 
 let cond =
-    pipe2 (skip "Cond" >>. condExpr .>> ws) (many1 (condAlternative .>> ws))
+    pipe2 (skip "Cond" >>. condExpr .>> ws)
+            (many1 (condAlternative <?> "?( expression )" .>> ws))
         (fun con alt -> KCond(con, alt))
 do condExprRef:= choice [kbool]
 
+let applyParameters =
+    between (skip "(") (ws >>. skip ")")
+            (sepBy applyExpr (pstring "," .>> ws))
+
 let apply =
-    pipe2 identifier
-        (between (skip "(") (skip ")")
-            (many ((expr .>> ws) .>> skip ",")))
+    pipe2 identifier (applyParameters <?> "comma-separated parameters")
         (fun funcIdent args -> KApply(funcIdent, args))
 
 let prim =
-    pipe3 expr (choice [pstring "+"; pstring "-"; pstring "*"; pstring "/"]) expr 
+    pipe3 expr
+        ((choice [pstring "+"; pstring "-";
+                  pstring "*"; pstring "/";
+                  pstring "<"; pstring ">";
+                  pstring "=="; pstring "!=";
+                  pstring "OR"; pstring "AND";
+                  pstring "NOT"]) .>> ws)
+            expr
         (fun lexpr op rexpr -> KPrim(op, lexpr, rexpr))
 
-let funcArgs = skip ":" >>. identifier
+let funcArgs = many ((pstring ":" >>. identifier) .>> ws)
+
+let funcBody = many (skip "|" >>. expr .>> ws)
 
 let anonFunction =
     between (skip "[") (skip "]")
-            (pipe2 (many funcArgs) (skip "|" >>. expr)
+            (pipe2 (funcArgs <?> ":declarations")
+                   (funcBody <?> "function body")
                 (fun args body -> KAnonFun(args, body)))
 
 // replace dummy parser references
-do condExprRef:= choice [kbool; ident; apply; anonFunction]
+do condExprRef:= choice [kbool; ident; apply(*; prim; anonFunction*)]
 do exprRef:= choice [number; kbool; kstring; declaration; 
-                    ident; cond; apply; prim; anonFunction]
+                    ident; cond; apply(*; prim; anonFunction*)]
+do applyRef:= choice [number; kbool; kstring;
+                    ident; apply(*; prim; anonFunction*)]

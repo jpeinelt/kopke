@@ -89,6 +89,9 @@ type ParserTestClass () =
         let actual = parserTest declaration "varname"
         Assert.AreEqual(expected, actual)
 
+
+    (* identifier *)
+
     [<Test>]
     member public this.TestIdentifier() =
         let expected = KIdent "someidentifier"
@@ -106,6 +109,8 @@ type ParserTestClass () =
         let expected = KAbort
         let actual = parserTest ident "Identifier"
         Assert.AreEqual(expected, actual)
+
+    (* conditions *)
 
     [<Test>]
     member public this.TestCondAlternativeWithBool() =
@@ -143,8 +148,29 @@ type ParserTestClass () =
         let actual = parserTest cond "Cond True ?(\"so true\") ?( False )"
         Assert.AreEqual(expected, actual)
 
-    // [<Test>]
-    // member public this.TestApplyEmptyArgs() =
-    //     let expected = KCond(KBool true, [KString "so true"; KBool false])
-    //     let actual = parserTest apply "somefunc( )"
-    //     Assert.AreEqual(expected, actual)       
+
+    (* apply *)
+
+    [<Test>]
+    member public this.TestApplyEmptyArgs() =
+        let expected = KApply("somefunc", [])
+        let actual = parserTest apply "somefunc()"
+        Assert.AreEqual(expected, actual)
+
+    [<Test>]
+    member public this.TestApplyWithArgs() =
+        let expected = KApply("somefunc", [KString "so true"; KBool false])
+        let actual = parserTest apply "somefunc( \"so true\", False )"
+        Assert.AreEqual(expected, actual)
+
+    [<Test>]
+    member public this.TestApplyFailing() =
+        let expected = KAbort
+        let actual = parserTest apply "somefunc( \"so true\",)" // trailing argument comma
+        Assert.AreEqual(expected, actual)
+
+    (* primitives *)
+    (* functions *)
+    (* comments *)
+    (* commands *)
+    (* program *)

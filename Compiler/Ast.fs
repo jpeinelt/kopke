@@ -9,7 +9,7 @@ type KExpr =
     | KDecl of string
     | KIdent of string
     | KPrim of string * KExpr * KExpr     // Primitive like + - * /
-    | KAnonFun of (string list) * KExpr
+    | KAnonFun of string list * KExpr list
     | KCond of KExpr * KExpr list
     | KApply of string * KExpr list
     | KAbort // should be only used in tests
@@ -23,7 +23,7 @@ type KExpr =
             | KDecl   s -> box (":" + s)
             | KIdent  s -> box ("@" + s)
             | KPrim (s, e1, e2) -> box s
-            | KAnonFun (s, e) -> box "function"
+            | KAnonFun (sl, el) -> box "function"
             | KCond (c, a) -> box "cond"
             | KApply (s, e) -> box ("function:" + s)
             | KAbort    -> box "abort"
