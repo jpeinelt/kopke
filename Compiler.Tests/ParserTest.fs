@@ -170,7 +170,45 @@ type ParserTestClass () =
         Assert.AreEqual(expected, actual)
 
     (* primitives *)
+
+    [<Test>]
+    member public this.TestPrimitiveWhitespace() =
+        let expected = KPrim("+", KInt 4, KInt 5)
+        let actual = parserTest prim "4 + 5"
+        Assert.AreEqual(expected, actual)
+
+    [<Test>]
+    member public this.TestPrimitiveBoolOp() =
+        let expected = KPrim("OR", KBool true, KBool false)
+        let actual = parserTest prim "True OR False"
+        Assert.AreEqual(expected, actual)
+
     (* functions *)
+
+    [<Test>]
+    member public this.TestFunctionEmpty() =
+        let expected = KAnonFun([], [])
+        let actual = parserTest anonFunction "[|]"
+        Assert.AreEqual(expected, actual)
+
+    [<Test>]
+    member public this.TestFunctionNoArgs() =
+        let expected = KAnonFun([], [KString "yeah"])
+        let actual = parserTest anonFunction "[| \"yeah\"]"
+        Assert.AreEqual(expected, actual)
+
+    [<Test>]
+    member public this.TestFunctionArgAndBody() =
+        let expected = KAnonFun(["x"], [KString "yeah"])
+        let actual = parserTest anonFunction "[:x| \"yeah\"]"
+        Assert.AreEqual(expected, actual)
+
+    [<Test>]
+    member public this.TestFunctionManyArgsAndBodyExprs() =
+        let expected = KAnonFun(["x"; "y"], [KIdent "x"; KBool true; KIdent "y"])
+        let actual = parserTest anonFunction "[:x :y | x True y ]"
+        Assert.AreEqual(expected, actual)
+
     (* comments *)
     (* commands *)
     (* program *)

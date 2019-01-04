@@ -89,19 +89,19 @@ let apply =
         (fun funcIdent args -> KApply(funcIdent, args))
 
 let prim =
-    pipe3 expr
-        ((choice [pstring "+"; pstring "-";
+    pipe3 (expr .>> ws)
+        (choice [pstring "+"; pstring "-";
                   pstring "*"; pstring "/";
                   pstring "<"; pstring ">";
                   pstring "=="; pstring "!=";
                   pstring "OR"; pstring "AND";
-                  pstring "NOT"]) .>> ws)
-            expr
+                  pstring "NOT"] .>> ws)
+            (expr .>> ws)
         (fun lexpr op rexpr -> KPrim(op, lexpr, rexpr))
 
-let funcArgs = many ((pstring ":" >>. identifier) .>> ws)
+let funcArgs = (many ((pstring ":" >>. identifier) .>> ws)) .>> (skip "|")
 
-let funcBody = many (skip "|" >>. expr .>> ws)
+let funcBody = many (expr .>> ws)
 
 let anonFunction =
     between (skip "[") (skip "]")
